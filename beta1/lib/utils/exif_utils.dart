@@ -1,8 +1,8 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:exif/exif.dart';
-//import 'package:image_gallery_saver/image_gallery_saver.dart';
 
-Future<void> updatePhotoMetadata(File imageFile, double latitude, double longitude) async {
+Future<File?> updatePhotoMetadata(File imageFile, double latitude, double longitude, DateTime dateTime) async {
   try {
     // 1. 원본 이미지의 바이트를 읽기
     final bytes = await imageFile.readAsBytes();
@@ -13,36 +13,34 @@ Future<void> updatePhotoMetadata(File imageFile, double latitude, double longitu
     // 3. EXIF 데이터가 없는 경우 처리
     if (data.isEmpty) {
       print("No EXIF data found.");
-      return;
+      return null;
     }
 
     // 4. GPS 데이터 업데이트
-    // EXIF 표준에 맞는 방식으로 좌표를 업데이트
     data['GPSLatitude'] = [latitude.abs(), 0, 0] as IfdTag;  // Latitude 값 업데이트
     data['GPSLongitude'] = [longitude.abs(), 0, 0] as IfdTag;  // Longitude 값 업데이트
     data['GPSLatitudeRef'] = (latitude >= 0 ? 'N' : 'S') as IfdTag;  // Latitude 방향 업데이트
     data['GPSLongitudeRef'] = (longitude >= 0 ? 'E' : 'W') as IfdTag;  // Longitude 방향 업데이트
 
-    // 5. EXIF 데이터를 바이트로 변환하여 업데이트
+    // 5. 날짜와 시간 정보 업데이트
+    final formattedDateTime = '${dateTime.year}:${dateTime.month}:${dateTime.day} ${dateTime.hour}:${dateTime.minute}:${dateTime.second}';
+    data['DateTimeOriginal'] = formattedDateTime as IfdTag;  // 시간 정보 업데이트
+
+    // 6. EXIF 데이터를 바이트로 변환하여 업데이트
     final updatedBytes = await _writeExifData(bytes, data);
 
-    // 6. 임시 파일 경로 생성 (기존 이미지를 덮어쓰지 않기 위해)
+    // 7. 임시 파일 경로 생성 (기존 이미지를 덮어쓰지 않기 위해)
     final tempDirectory = Directory.systemTemp;
     final tempFile = File('${tempDirectory.path}/temp_image.jpg');
 
-    // 7. 새로운 파일에 EXIF 수정된 데이터를 저장 (갤러리에만 저장하면 됨)
+    // 8. 새로운 파일에 EXIF 수정된 데이터를 저장 (갤러리에만 저장하면 됨)
     await tempFile.writeAsBytes(updatedBytes);
 
-    // 8. 갤러리에 저장
-    // final result = await ImageGallerySaver.saveFile(tempFile.path);
-    // if (result != null) {
-    //   print("Photo saved to gallery! Result: $result");
-    // } else {
-    //   print("Failed to save photo to gallery.");
-    // }
+    return tempFile;  // 수정된 파일 반환
 
   } catch (e) {
     print("Failed to update photo metadata: $e");
+    return null;
   }
 }
 

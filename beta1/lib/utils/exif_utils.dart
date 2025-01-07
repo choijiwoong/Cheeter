@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:typed_data';
+import 'dart:typed_data'; // Uint8List를 사용하려면 이 패키지를 임포트해야 합니다.
 import 'package:exif/exif.dart';
 
 Future<File?> updatePhotoMetadata(File imageFile, double latitude, double longitude, DateTime dateTime) async {
@@ -8,40 +8,89 @@ Future<File?> updatePhotoMetadata(File imageFile, double latitude, double longit
     final bytes = await imageFile.readAsBytes();
 
     // 2. EXIF 데이터를 읽기
-    final data = await readExifFromBytes(bytes);
+    final exifData = await readExifFromBytes(bytes);
 
     // 3. EXIF 데이터가 없는 경우 처리
-    if (data.isEmpty) {
+    if (exifData.isEmpty) {
       print("No EXIF data found.");
       return null;
     }
 
-    // 4. GPS 데이터 업데이트
-    data['GPSLatitude'] = [latitude.abs(), 0, 0] as IfdTag;  // Latitude 값 업데이트
-    data['GPSLongitude'] = [longitude.abs(), 0, 0] as IfdTag;  // Longitude 값 업데이트
-    data['GPSLatitudeRef'] = (latitude >= 0 ? 'N' : 'S') as IfdTag;  // Latitude 방향 업데이트
-    data['GPSLongitudeRef'] = (longitude >= 0 ? 'E' : 'W') as IfdTag;  // Longitude 방향 업데이트
+    // 4. GPS 데이터 추가 또는 업데이트
+    exifData['GPSLatitude'] = IfdTag(
+      tag: 0x0002, // GPSLatitude 태그 ID
+      tagType: 'GPSLatitude',
+      printable: _formatDms(latitude.abs()),
+      values: IfdRatios(_convertToDmsRatios(latitude.abs())),
+    );
+
+    exifData['GPSLongitude'] = IfdTag(
+      tag: 0x0004, // GPSLongitude 태그 ID
+      tagType: 'GPSLongitude',
+      printable: _formatDms(longitude.abs()),
+      values: IfdRatios(_convertToDmsRatios(longitude.abs())),
+    );
+
+    exifData['GPSLatitudeRef'] = IfdTag(
+      tag: 0x0001, // GPSLatitudeRef 태그 ID
+      tagType: 'GPSLatitudeRef',
+      printable: latitude >= 0 ? 'N' : 'S',
+      values: IfdBytes(Uint8List.fromList([latitude >= 0 ? 0x4E : 0x53])), // 'N' or 'S' ASCII
+    );
+
+    exifData['GPSLongitudeRef'] = IfdTag(
+      tag: 0x0003, // GPSLongitudeRef 태그 ID
+      tagType: 'GPSLongitudeRef',
+      printable: longitude >= 0 ? 'E' : 'W',
+      values: IfdBytes(Uint8List.fromList([longitude >= 0 ? 0x45 : 0x57])), // 'E' or 'W' ASCII
+    );
 
     // 5. 날짜와 시간 정보 업데이트
     final formattedDateTime = '${dateTime.year}:${dateTime.month}:${dateTime.day} ${dateTime.hour}:${dateTime.minute}:${dateTime.second}';
-    data['DateTimeOriginal'] = formattedDateTime as IfdTag;  // 시간 정보 업데이트
+    exifData['DateTimeOriginal'] = IfdTag(
+      tag: 0x9003, // DateTimeOriginal 태그 ID
+      tagType: 'DateTimeOriginal',
+      printable: formattedDateTime,
+      values: IfdBytes(Uint8List.fromList(formattedDateTime.codeUnits)),
+    );
 
     // 6. EXIF 데이터를 바이트로 변환하여 업데이트
-    final updatedBytes = await _writeExifData(bytes, data);
+    final updatedBytes = await _writeExifData(bytes, exifData);
 
-    // 7. 임시 파일 경로 생성 (기존 이미지를 덮어쓰지 않기 위해)
+    // 7. 임시 파일 경로 생성
     final tempDirectory = Directory.systemTemp;
     final tempFile = File('${tempDirectory.path}/temp_image.jpg');
 
-    // 8. 새로운 파일에 EXIF 수정된 데이터를 저장 (갤러리에만 저장하면 됨)
+    // 8. 새로운 파일에 EXIF 수정된 데이터를 저장
     await tempFile.writeAsBytes(updatedBytes);
 
-    return tempFile;  // 수정된 파일 반환
+    return tempFile;
 
   } catch (e) {
     print("Failed to update photo metadata: $e");
     return null;
   }
+}
+
+/// GPS 좌표를 DMS 형식으로 변환하는 함수
+List<Ratio> _convertToDmsRatios(double coordinate) {
+  final degrees = coordinate.floor();
+  final minutes = ((coordinate - degrees) * 60).floor();
+  final seconds = (((coordinate - degrees) * 60 - minutes) * 60 * 100).round();
+
+  return [
+    Ratio(degrees, 1),
+    Ratio(minutes, 1),
+    Ratio(seconds, 100), // 초를 1/100 단위로 표현
+  ];
+}
+
+/// DMS 형식을 문자열로 변환하는 함수
+String _formatDms(double coordinate) {
+  final degrees = coordinate.floor();
+  final minutes = ((coordinate - degrees) * 60).floor();
+  final seconds = (((coordinate - degrees) * 60 - minutes) * 60).toStringAsFixed(2);
+  return '$degrees°$minutes\'$seconds"';
 }
 
 /// EXIF 데이터를 이미지 바이트에 적용하는 함수
@@ -56,7 +105,5 @@ Future<List<int>?> replaceExifData(List<int> imageBytes, Map<String, IfdTag> upd
   // EXIF 데이터를 변경한 바이트를 반환하는 로직을 구현해야 합니다.
   // 이 예시는 EXIF 데이터를 수정할 수 있는 방법을 제공하지 않지만, 일반적으로 EXIF 수정 라이브러리 사용 필요
 
-  // EXIF 수정 로직: 'exif' 패키지 또는 다른 EXIF 라이브러리를 활용해 EXIF 데이터를 바이트에 반영할 수 있습니다.
-
-  return imageBytes;  // 이 부분은 실제 EXIF 수정 후 바이트로 교체해야 합니다.
+  return imageBytes; // 이 부분은 실제 EXIF 수정 후 바이트로 교체해야 합니다.
 }

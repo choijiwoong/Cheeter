@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'map_screen.dart';
@@ -14,6 +15,7 @@ class _MainScreenState extends State<MainScreen> {
   File? _selectedImage; // 이미지를 담을 변수
   DateTime? _selectedDateTime; // 수정할 시각을 담을 변수
   File? _modifiedImage; // 결과 이미지를 담을 변수
+  LatLng? _selectedLocation;
 
   Future<void> _pickImage() async { // 유저가 이미지를 고를 때 처리할 함수
     final picker = ImagePicker(); // 이미지 피커 생성
@@ -30,19 +32,11 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _openMap() { // 유저가 위치를 설정할 때 처리할 함수
-    if (_selectedImage == null) { // 유저가 선택한 사진이 존재하지 않는다면
+    if (_selectedImage==null) { // 유저가 선택한 사진이 존재하지 않는다면
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("먼저 사진을 선택해주세요.")), // 어플리케이션 내에 pop알림을 출력한다.
       );
       print("[DEBUG]_MainScreenState._openMap() 사진을 선택하지 않음.");
-      return;
-    }
-
-    if (_selectedDateTime == null) { // 유저가 선택한 날짜와 시간이 존재하지 않는다면
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("날짜와 시간을 선택해주세요.")),
-      );
-      print("날짜와 시간을 선택하지 않음.");
       return;
     }
 
@@ -53,20 +47,8 @@ class _MainScreenState extends State<MainScreen> {
         builder: (context) => MapScreen(// MapScreen을 실행
           onLocationSelected: (location) { // 위치를 설정하면 실행할 이벤트 콜백. 결과로서 location을 받아옴
             print("[DEBUG]_MainScreenState._openMap() 위치 선택됨: ${location.latitude}, ${location.longitude}");
-            updatePhotoMetadata( // 사진의 메타정보를 갱신하는 함수(Util)
-              _selectedImage!,
-              location.latitude,
-              location.longitude,
-              _selectedDateTime!,
-            ).then((updatedImage) { // 수정된 사진을 인자로 받아옴
-              if (updatedImage != null) {
-                setState(() {
-                  _modifiedImage = updatedImage;  // 수정된 이미지를 상태에 저장
-                  print("[DEBUG]_MainScreenState._openMap() 수정된 이미지 저장됨.");
-                });
-              } else {
-                print("[DEBUG]_MainScreenState._openMap() 이미지 수정 실패.");
-              }
+            setState(() {
+              _selectedLocation=location;
             });
           },
         ),
@@ -103,30 +85,46 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  Future<void> _saveImage() async {
-    if (_modifiedImage == null) {
+  Future<void> _saveImage() async { // with modify
+    if (_selectedImage == null) { // 유저가 선택한 사진이 존재하지 않는다면
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("[DEBUG]_MainScreenState._saveImage() 수정된 이미지를 먼저 선택해주세요.")),
+        SnackBar(content: Text("먼저 사진을 선택해주세요.")), // 어플리케이션 내에 pop알림을 출력한다.
       );
-      print("[DEBUG]_MainScreenState._saveImage() 수정된 이미지가 없습니다.");
+      print("[DEBUG]_MainScreenState._saveImage() 사진을 선택하지 않음.");
       return;
     }
 
-    try {
-      final directory = await getApplicationDocumentsDirectory();
-      final savePath = '${directory.path}/modified_image.jpg';
-      await _modifiedImage!.copy(savePath);
-      print("[DEBUG]_MainScreenState._saveImage() 이미지 저장 경로: $savePath");
-
+    if (_selectedDateTime == null) { // 유저가 선택한 날짜와 시간이 존재하지 않는다면
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("[DEBUG]_MainScreenState._saveImage() 이미지가 저장되었습니다: $savePath")),
+        SnackBar(content: Text("날짜와 시간을 선택해주세요.")),
       );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("[DEBUG]_MainScreenState._saveImage() 이미지 저장 실패: $e")),
-      );
-      print("[DEBUG]_MainScreenState._saveImage() 이미지 저장 실패: $e");
+      print("[DEBUG]_MainScreenState._modifyImage() 날짜와 시간을 선택하지 않음.");
+      return;
     }
+
+    if (_selectedLocation == null) { // 유저가 선택한 날짜와 시간이 존재하지 않는다면
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("위치를 선택해주세요.")),
+      );
+      print("[DEBUG]_MainScreenState._modifyImage() 위치를 선택하지 않음.");
+      return;
+    }
+
+    updatePhotoMetadata( // 사진의 메타정보를 갱신하는 함수(Util)
+      _selectedImage!,
+      _selectedLocation!.latitude,
+      _selectedLocation!.longitude,
+      _selectedDateTime!,
+    ).then((updatedImage) { // 수정된 사진을 인자로 받아옴
+      if (updatedImage != null) {
+        setState(() {
+          _modifiedImage = updatedImage;  // 수정된 이미지를 상태에 저장
+          print("[DEBUG]_MainScreenState._modifyImage() 수정된 이미지 저장됨.");
+        });
+      } else {
+        print("[DEBUG]_MainScreenState._modifyImage() 이미지 수정 실패.");
+      }
+    });
   }
 
   @override

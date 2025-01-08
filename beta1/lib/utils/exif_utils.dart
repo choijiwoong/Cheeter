@@ -57,13 +57,18 @@ Future<File?> updatePhotoMetadata(File imageFile, double latitude, double longit
     // 6. EXIF 데이터를 바이트로 변환하여 업데이트
     final updatedBytes = await _writeExifData(bytes, exifData);
 
-    // 7. 원본 파일에 EXIF 수정된 데이터를 저장 (새 파일을 만들지 않고 기존 파일 덮어쓰기)
-    await imageFile.writeAsBytes(updatedBytes);
+    // 7. 새로운 파일 생성
+    final newImagePath = imageFile.parent.path + '/updated_' + imageFile.uri.pathSegments.last;
+    print("[DEBUG]_exif_utils.updatePhotoMetadata() 새 파일 경로: ${newImagePath}");
+    final newImageFile = File(newImagePath);
 
-    return imageFile; // 수정된 원본 파일 반환
+    // 8. 수정된 데이터를 새로운 파일에 쓰기
+    await newImageFile.writeAsBytes(updatedBytes);
+    print("[DEBUG]_exif_utils.updatePhotoMetadata() 이미지 메타데이터 업데이트 성공");
+    return newImageFile; // 수정된 새 파일 반환
 
   } catch (e) {
-    print("[DEBUG]_exif_utils.updatePhotoMetadata() Failed to update photo metadata: $e");
+    print("[DEBUG]_exif_utils.updatePhotoMetadata() 이미지 메타데이터 업데이트 실패: $e");
     return null;
   }
 }

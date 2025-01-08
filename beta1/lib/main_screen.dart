@@ -5,37 +5,40 @@ import 'package:path_provider/path_provider.dart';
 import 'map_screen.dart';
 import 'utils/exif_utils.dart';
 
-class MainScreen extends StatefulWidget {
+class MainScreen extends StatefulWidget { //상태기반 위젯을 상속받아
   @override
-  _MainScreenState createState() => _MainScreenState();
+  _MainScreenState createState() => _MainScreenState(); // 상태화면을 만든다.
 }
 
 class _MainScreenState extends State<MainScreen> {
-  File? _selectedImage;
-  DateTime? _selectedDateTime;
-  File? _modifiedImage;
+  File? _selectedImage; // 이미지를 담을 변수
+  DateTime? _selectedDateTime; // 수정할 시각을 담을 변수
+  File? _modifiedImage; // 결과 이미지를 담을 변수
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-        print("선택된 이미지: ${_selectedImage!.path}");
+  Future<void> _pickImage() async { // 유저가 이미지를 고를 때 처리할 함수
+    final picker = ImagePicker(); // 이미지 피커 생성
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery); // 갤러에서 이미지를 선택하면 저장
+
+    if (pickedFile != null) { // 선택한 이미지가 존재한다면
+      setState(() { // 상태를 설정한다
+        _selectedImage = File(pickedFile.path); // 선택한 파일의 경로를 기반으로 File 객체를 생성하여 변수에 저장
+        print("[DEBUG]_MainScreenState._pickImage() 선택된 이미지: ${_selectedImage!.path}");
       });
+    } else{ // 이미지를 선택하지 않았을 경우
+      print("[DEBUG]_MainScreenState._pickImage() 갤러리에서 이미지를 선택하지 않았습니다.");
     }
   }
 
-  void _openMap() {
-    if (_selectedImage == null) {
+  void _openMap() { // 유저가 위치를 설정할 때 처리할 함수
+    if (_selectedImage == null) { // 유저가 선택한 사진이 존재하지 않는다면
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("먼저 사진을 선택해주세요.")),
+        SnackBar(content: Text("먼저 사진을 선택해주세요.")), // 어플리케이션 내에 pop알림을 출력한다.
       );
-      print("사진을 선택하지 않음.");
+      print("[DEBUG]_MainScreenState._openMap() 사진을 선택하지 않음.");
       return;
     }
 
-    if (_selectedDateTime == null) {
+    if (_selectedDateTime == null) { // 유저가 선택한 날짜와 시간이 존재하지 않는다면
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("날짜와 시간을 선택해주세요.")),
       );
@@ -43,26 +46,26 @@ class _MainScreenState extends State<MainScreen> {
       return;
     }
 
-    print("지도에서 위치 선택 열기.");
+    print("[DEBUG]_MainScreenState._openMap() 지도에서 위치 선택 열기.");
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => MapScreen(
-          onLocationSelected: (location) {
-            print("위치 선택됨: ${location.latitude}, ${location.longitude}");
-            updatePhotoMetadata(
+        builder: (context) => MapScreen(// MapScreen을 실행
+          onLocationSelected: (location) { // 위치를 설정하면 실행할 이벤트 콜백. 결과로서 location을 받아옴
+            print("[DEBUG]_MainScreenState._openMap() 위치 선택됨: ${location.latitude}, ${location.longitude}");
+            updatePhotoMetadata( // 사진의 메타정보를 갱신하는 함수(Util)
               _selectedImage!,
               location.latitude,
               location.longitude,
               _selectedDateTime!,
-            ).then((updatedImage) {
+            ).then((updatedImage) { // 수정된 사진을 인자로 받아옴
               if (updatedImage != null) {
                 setState(() {
                   _modifiedImage = updatedImage;  // 수정된 이미지를 상태에 저장
-                  print("수정된 이미지 저장됨.");
+                  print("[DEBUG]_MainScreenState._openMap() 수정된 이미지 저장됨.");
                 });
               } else {
-                print("이미지 수정 실패.");
+                print("[DEBUG]_MainScreenState._openMap() 이미지 수정 실패.");
               }
             });
           },
@@ -94,7 +97,7 @@ class _MainScreenState extends State<MainScreen> {
             pickedTime.hour,
             pickedTime.minute,
           );
-          print("선택된 날짜와 시간: $_selectedDateTime");
+          print("[DEBUG]_MainScreenState._selectDateTime()선택된 날짜와 시간: $_selectedDateTime");
         });
       }
     }
@@ -103,9 +106,9 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _saveImage() async {
     if (_modifiedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("수정된 이미지를 먼저 선택해주세요.")),
+        SnackBar(content: Text("[DEBUG]_MainScreenState._saveImage() 수정된 이미지를 먼저 선택해주세요.")),
       );
-      print("수정된 이미지가 없습니다.");
+      print("[DEBUG]_MainScreenState._saveImage() 수정된 이미지가 없습니다.");
       return;
     }
 
@@ -113,16 +116,16 @@ class _MainScreenState extends State<MainScreen> {
       final directory = await getApplicationDocumentsDirectory();
       final savePath = '${directory.path}/modified_image.jpg';
       await _modifiedImage!.copy(savePath);
-      print("이미지 저장 경로: $savePath");
+      print("[DEBUG]_MainScreenState._saveImage() 이미지 저장 경로: $savePath");
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("이미지가 저장되었습니다: $savePath")),
+        SnackBar(content: Text("[DEBUG]_MainScreenState._saveImage() 이미지가 저장되었습니다: $savePath")),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("이미지 저장 실패: $e")),
+        SnackBar(content: Text("[DEBUG]_MainScreenState._saveImage() 이미지 저장 실패: $e")),
       );
-      print("이미지 저장 실패: $e");
+      print("[DEBUG]_MainScreenState._saveImage() 이미지 저장 실패: $e");
     }
   }
 

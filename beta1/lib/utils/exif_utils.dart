@@ -12,7 +12,7 @@ Future<File?> updatePhotoMetadata(File imageFile, double latitude, double longit
 
     // 3. EXIF 데이터가 없는 경우 처리
     if (exifData.isEmpty) {
-      print("No EXIF data found.");
+      print("[DEBUG]_exif_utils.updatePhotoMetadata() No EXIF data found.");
       return null;
     }
 
@@ -57,17 +57,13 @@ Future<File?> updatePhotoMetadata(File imageFile, double latitude, double longit
     // 6. EXIF 데이터를 바이트로 변환하여 업데이트
     final updatedBytes = await _writeExifData(bytes, exifData);
 
-    // 7. 임시 파일 경로 생성
-    final tempDirectory = Directory.systemTemp;
-    final tempFile = File('${tempDirectory.path}/temp_image.jpg');
+    // 7. 원본 파일에 EXIF 수정된 데이터를 저장 (새 파일을 만들지 않고 기존 파일 덮어쓰기)
+    await imageFile.writeAsBytes(updatedBytes);
 
-    // 8. 새로운 파일에 EXIF 수정된 데이터를 저장
-    await tempFile.writeAsBytes(updatedBytes);
-
-    return tempFile;
+    return imageFile; // 수정된 원본 파일 반환
 
   } catch (e) {
-    print("Failed to update photo metadata: $e");
+    print("[DEBUG]_exif_utils.updatePhotoMetadata() Failed to update photo metadata: $e");
     return null;
   }
 }

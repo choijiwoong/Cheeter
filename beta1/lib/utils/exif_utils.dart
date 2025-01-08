@@ -1,6 +1,21 @@
 import 'dart:io';
 import 'dart:typed_data'; // Uint8List를 사용하려면 이 패키지를 임포트해야 합니다.
 import 'package:exif/exif.dart';
+import 'package:gallery_saver/gallery_saver.dart';
+
+Future<void> saveToGallery(File updatedFile) async {
+  try {
+    final isSuccess=await GallerySaver.saveImage(updatedFile.path, albumName: 'cheeter');
+
+    if(isSuccess == true){
+      print("[DEBUG]exif_utils.saveToGallery_ 갤러리 저장 완료");
+    } else {
+      print("[DEBUG]exif_utils.saveToGallery_ 갤러리 저장 실패");
+    }
+  } catch (e){
+    print("[DEBUG]exif_utils.saveToGallery_ 갤러리 세이버 오류 $e");
+  }
+}
 
 Future<File?> updatePhotoMetadata(File imageFile, double latitude, double longitude, DateTime dateTime) async {
   try {
@@ -63,8 +78,12 @@ Future<File?> updatePhotoMetadata(File imageFile, double latitude, double longit
     final newImageFile = File(newImagePath);
 
     // 8. 수정된 데이터를 새로운 파일에 쓰기
-    await newImageFile.writeAsBytes(updatedBytes);
+    await newImageFile.writeAsBytes(updatedBytes);//[DEBUG] 비활성화해도 됨
     print("[DEBUG]_exif_utils.updatePhotoMetadata() 이미지 메타데이터 업데이트 성공");
+    
+    // 9. 수정된 데이터 갤러리에 저장
+    saveToGallery(newImageFile);
+    
     return newImageFile; // 수정된 새 파일 반환
 
   } catch (e) {

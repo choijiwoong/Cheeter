@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- 갤러리 저장 !-->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
@@ -7,7 +8,7 @@
         android:label="beta1"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:requestLegacyExternalStorage="true">
+        android:requestLegacyExternalStorage="true"> <!-- 안드로이드 10 이상 갤러리 저장 !-->
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"

@@ -110,7 +110,7 @@ class _MainScreenState extends State<MainScreen> {
       return;
     }
 
-    updatePhotoMetadata( // 사진의 메타정보를 갱신하는 함수(Util)
+    updatePhotoMetadataAndSave( // 사진의 메타정보를 갱신하는 함수(Util)
       _selectedImage!,
       _selectedLocation!.latitude,
       _selectedLocation!.longitude,

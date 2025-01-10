@@ -17,7 +17,7 @@ Future<void> saveToGallery(File updatedFile) async {
   }
 }
 
-Future<File?> updatePhotoMetadata(File imageFile, double latitude, double longitude, DateTime dateTime) async {
+Future<File?> updatePhotoMetadataAndSave(File imageFile, double latitude, double longitude, DateTime dateTime) async {
   try {
     // 1. 원본 이미지의 바이트를 읽기
     final bytes = await imageFile.readAsBytes();
@@ -32,41 +32,49 @@ Future<File?> updatePhotoMetadata(File imageFile, double latitude, double longit
     }
 
     // 4. GPS 데이터 추가 또는 업데이트
-    exifData['GPSLatitude'] = IfdTag(
+    exifData['GPS GPSLatitude'] = IfdTag(
       tag: 0x0002, // GPSLatitude 태그 ID
-      tagType: 'GPSLatitude',
+      tagType: 'Ratio',
       printable: _formatDms(latitude.abs()),
       values: IfdRatios(_convertToDmsRatios(latitude.abs())),
     );
 
-    exifData['GPSLongitude'] = IfdTag(
+    exifData['GPS GPSLongitude'] = IfdTag(
       tag: 0x0004, // GPSLongitude 태그 ID
-      tagType: 'GPSLongitude',
+      tagType: 'Ratio',
       printable: _formatDms(longitude.abs()),
       values: IfdRatios(_convertToDmsRatios(longitude.abs())),
     );
 
-    exifData['GPSLatitudeRef'] = IfdTag(
+    exifData['GPS GPSLatitudeRef'] = IfdTag(
       tag: 0x0001, // GPSLatitudeRef 태그 ID
-      tagType: 'GPSLatitudeRef',
+      tagType: 'ASCII',
       printable: latitude >= 0 ? 'N' : 'S',
       values: IfdBytes(Uint8List.fromList([latitude >= 0 ? 0x4E : 0x53])), // 'N' or 'S' ASCII
     );
 
-    exifData['GPSLongitudeRef'] = IfdTag(
+    exifData['GPS GPSLongitudeRef'] = IfdTag(
       tag: 0x0003, // GPSLongitudeRef 태그 ID
-      tagType: 'GPSLongitudeRef',
+      tagType: 'ASCII',
       printable: longitude >= 0 ? 'E' : 'W',
       values: IfdBytes(Uint8List.fromList([longitude >= 0 ? 0x45 : 0x57])), // 'E' or 'W' ASCII
     );
 
     // 5. 날짜와 시간 정보 업데이트
     final formattedDateTime = '${dateTime.year}:${dateTime.month}:${dateTime.day} ${dateTime.hour}:${dateTime.minute}:${dateTime.second}';
-    exifData['DateTimeOriginal'] = IfdTag(
+    exifData['EXIF DateTimeOriginal'] = IfdTag(
       tag: 0x9003, // DateTimeOriginal 태그 ID
       tagType: 'DateTimeOriginal',
       printable: formattedDateTime,
       values: IfdBytes(Uint8List.fromList(formattedDateTime.codeUnits)),
+    );
+
+    final formattedDateTime2 = '${dateTime.year}:${dateTime.month}:${dateTime.day} ${dateTime.hour}:${dateTime.minute}:${dateTime.second}';
+    exifData['Image DateTime'] = IfdTag(
+      tag: 0x0132, //
+      tagType: 'ASCII',
+      printable: formattedDateTime2,
+      values: IfdBytes(Uint8List.fromList(formattedDateTime2.codeUnits)),
     );
 
     // 6. EXIF 데이터를 바이트로 변환하여 업데이트
@@ -80,10 +88,10 @@ Future<File?> updatePhotoMetadata(File imageFile, double latitude, double longit
     // 8. 수정된 데이터를 새로운 파일에 쓰기
     await newImageFile.writeAsBytes(updatedBytes);//[DEBUG] 비활성화해도 됨
     print("[DEBUG]_exif_utils.updatePhotoMetadata() 이미지 메타데이터 업데이트 성공");
-    
+
     // 9. 수정된 데이터 갤러리에 저장
     saveToGallery(newImageFile);
-    
+
     return newImageFile; // 수정된 새 파일 반환
 
   } catch (e) {

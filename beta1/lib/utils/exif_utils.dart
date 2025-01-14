@@ -77,6 +77,14 @@ Future<File?> updatePhotoMetadataAndSave(File imageFile, double latitude, double
       values: IfdBytes(Uint8List.fromList(formattedDateTime2.codeUnits)),
     );
 
+    final formattedDateTime3 = '${dateTime.year}:${dateTime.month}:${dateTime.day} ${dateTime.hour}:${dateTime.minute}:${dateTime.second}';
+    exifData['EXIF DateTimeDigitized'] = IfdTag(
+      tag: 36868, //
+      tagType: 'ASCII',
+      printable: formattedDateTime3,
+      values: IfdBytes(Uint8List.fromList(formattedDateTime3.codeUnits)),
+    );
+
     // 6. EXIF 데이터를 바이트로 변환하여 업데이트
     final updatedBytes = await _writeExifData(bytes, exifData);
 
